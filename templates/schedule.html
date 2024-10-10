@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Daily Schedule</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f8f9fa;
+        }
+        .schedule-container {
+            text-align: center;
+            padding: 10px;
+            width: 85%;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            background-color: #ffffff;
+            overflow-y: auto;
+        }
+        h1 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        table {
+            margin: 0 auto;
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 13px;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+            padding: 4px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-size: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        td {
+            line-height: 1.2;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 3px 6px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        button.start {
+            background-color: #17a2b8;
+        }
+        button.pause {
+            background-color: #ffc107;
+        }
+        button.complete {
+            background-color: #28a745;
+        }
+        button.remove {
+            background-color: #dc3545;
+        }
+        .completed-task {
+            background-color: #d4edda;
+        }
+        .timer {
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        /* Signal Bar Progress Container */
+        .signal-bar-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 40px;
+            width: 60px;
+            margin: auto;
+        }
+
+        /* Each signal bar segment */
+        .signal-bar {
+            width: 8px;
+            margin: 0 2px;
+            background-color: #e0e0e0;
+            border-radius: 2px;
+            opacity: 0.3;
+        }
+
+        /* Signal bar height for each progress level */
+        .signal-bar.level-1 { height: 10%; }
+        .signal-bar.level-2 { height: 20%; }
+        .signal-bar.level-3 { height: 30%; }
+        .signal-bar.level-4 { height: 40%; }
+        .signal-bar.level-5 { height: 50%; }
+        .signal-bar.level-6 { height: 60%; }
+        .signal-bar.level-7 { height: 70%; }
+        .signal-bar.level-8 { height: 80%; }
+        .signal-bar.level-9 { height: 90%; }
+        .signal-bar.level-10 { height: 100%; }
+
+        /* Colors for different progress levels */
+        .signal-bar.low-progress { background-color: #ff6b6b; opacity: 1; }    /* Red for low progress */
+        .signal-bar.medium-progress { background-color: #ffcc00; opacity: 1; } /* Yellow for medium progress */
+        .signal-bar.high-progress { background-color: #4caf50; opacity: 1; }   /* Green for high progress */
+
+        #modal, #congrats-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            padding: 20px;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+            text-align: center;
+        }
+        #modal button, #congrats-modal button {
+            margin: 8px 5px;
+            padding: 8px 12px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 5;
+        }
+    </style>
+    <script>
+        let countdownInterval;
+        let timeLeft = 0;  // Variable to track time left in seconds
+        let currentTask;
+        let timerStatus = 'stopped';  // Variable to track timer status: 'stopped', 'running', 'paused'
+
+        // Function to format time as "MM:SS"
+        function formatTime(minutes, seconds) {
+            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }
+
+        // Start the countdown timer or resume if paused
+        function startTimer(taskId, duration) {
+            if (timerStatus === 'paused' && currentTask === taskId) {
+                // Resume from paused state
+                timerStatus = 'running';
+                countdownInterval = setInterval(updateTimer, 1000);
+                toggleButtons(taskId, 'start');
+                return;
+            }
+
+            console.log(`Starting timer for Task ID: ${taskId}, Duration: ${duration} minutes`);
+
+            // Check if duration is valid before starting timer
+            if (!duration || isNaN(duration)) {
+                alert("Invalid duration. Cannot start timer.");
+                return;
+            }
+
+            clearInterval(countdownInterval);  // Clear any existing timer
+            currentTask = taskId;
+            timerStatus = 'running';
+
+            const timerElement = document.getElementById(`timer-${taskId}`);
+            timeLeft = duration * 60;  // Convert minutes to seconds
+
+            // Start the countdown
+            countdownInterval = setInterval(updateTimer, 1000);
+            toggleButtons(taskId, 'start');
+        }
+
+        // Pause the timer
+        function pauseTimer(taskId) {
+            clearInterval(countdownInterval);
+            timerStatus = 'paused';
+            toggleButtons(taskId, 'pause');
+            console.log(`Paused timer for Task ID: ${taskId} at ${formatTime(Math.floor(timeLeft / 60), timeLeft % 60)}`);
+        }
+
+        // Update the timer display every second
+        function updateTimer() {
+            const timerElement = document.getElementById(`timer-${currentTask}`);
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerElement.innerText = formatTime(minutes, seconds);
+            timeLeft--;
+
+            if (timeLeft < 0) {
+                clearInterval(countdownInterval);
+                showModal(currentTask);
+                handleBreakCompletion(currentTask);  // Handle break completion for progress bar update
+            }
+        }
+
+        // Toggle button visibility based on timer state
+        function toggleButtons(taskId, action) {
+            const startButton = document.getElementById(`start-btn-${taskId}`);
+            const pauseButton = document.getElementById(`pause-btn-${taskId}`);
+
+            if (action === 'start') {
+                startButton.style.display = 'none';
+                pauseButton.style.display = 'inline';
+            } else if (action === 'pause') {
+                startButton.style.display = 'inline';
+                pauseButton.style.display = 'none';
+            }
+        }
+
+        // Show the modal popup when time is up
+        function showModal(taskId) {
+            document.getElementById('modal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+            currentTask = taskId;
+            timerStatus = 'stopped';
+        }
+
+        // Show the "Congrats" modal when task is completed
+        function showCongratsModal(taskId) {
+            document.getElementById('congrats-modal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+            currentTask = taskId;
+        }
+
+        // Handle actions from the modal popup
+        function handleModalResponse(response) {
+            const taskId = currentTask;
+            const timerElement = document.getElementById(`timer-${taskId}`);
+            
+            // Handle response for adding more time or moving to the next task
+            if (response === 'more-time') {
+                const additionalTime = prompt("How many more minutes would you like to add?");
+                if (additionalTime) {
+                    timeLeft += parseInt(additionalTime) * 60;
+                    timerStatus = 'running';
+                    countdownInterval = setInterval(updateTimer, 1000);
+                    toggleButtons(taskId, 'start');
+                }
+            } else if (response === 'next-task') {
+                timerElement.innerText = "Done!";
+                timerStatus = 'stopped';
+            }
+
+            // Close the modal
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+
+            // Ask if you want to adjust progress after closing the modal
+            const adjustProgress = confirm("Would you like to adjust the progress for this task?");
+            if (adjustProgress) {
+                const newProgress = prompt("Update progress for this task (1-10):");
+                if (newProgress) {
+                    // Update the progress value in the DOM
+                    document.getElementById(`progress-${taskId}`).innerText = newProgress || '0';
+                    
+                    // Update the row's data-progress attribute for dynamic color updating
+                    document.getElementById(taskId).setAttribute('data-progress', newProgress);
+
+                    // Update the status and reapply colors
+                    updateTaskStatus(taskId, newProgress);
+                    applyProgressColors();  // Reapply colors after updating progress
+
+                    // Update the progress bar visually
+                    updateSignalBar(taskId, newProgress);
+
+                    // If progress is 10, show the "Congrats" modal
+                    if (newProgress == 10) {
+                        showCongratsModal(taskId);
+                    }
+                }
+            }
+        }
+
+        // Handle break completion and update the progress bar
+        function handleBreakCompletion(taskId) {
+            const taskName = document.getElementById(taskId).children[0].innerText;
+            if (taskName === "Short Break" || taskName === "Lunch Break" || taskName === "Free Time") {
+                // Set break progress to 10 when break time is completed
+                document.getElementById(taskId).setAttribute('data-progress', '10');
+                updateSignalBar(taskId, 10);
+            }
+        }
+
+        // Update the visual signal-style progress bar based on progress value
+        function updateSignalBar(taskId, progress) {
+            const signalBars = document.getElementById(`signal-bar-${taskId}`).children;
+
+            for (let i = 0; i < signalBars.length; i++) {
+                const segment = signalBars[i];
+                segment.classList.remove('low-progress', 'medium-progress', 'high-progress');
+                
+                // Assign height and color classes based on progress
+                if (i < progress) {
+                    segment.classList.add(i < 3 ? 'low-progress' : (i < 7 ? 'medium-progress' : 'high-progress'));
+                } 
+            }
+        }
+
+        // Function to update the task status based on progress value
+        function updateTaskStatus(taskId, progress) {
+            const statusElement = document.getElementById(`status-${taskId}`);
+            if (progress == 1) {
+                statusElement.innerText = 'New';
+            } else if (progress >= 2 && progress <= 9) {
+                statusElement.innerText = 'In Progress';
+            } else if (progress == 10) {
+                statusElement.innerText = 'Completed';
+            }
+        }
+
+        // Apply background colors based on progress and update signal bars
+        function applyProgressColors() {
+            const rows = document.querySelectorAll('tr[data-progress]');
+            rows.forEach(row => {
+                const progress = parseInt(row.dataset.progress, 10);
+                const bgColor = getProgressColor(progress);
+                const textColor = getTextColorForBackground(bgColor);
+                row.style.backgroundColor = bgColor;
+                row.style.color = textColor;
+
+                // Update the signal bar display
+                const taskId = row.getAttribute('id');
+                updateSignalBar(taskId, progress);
+            });
+        }
+
+        // Function to get background color based on progress level
+        function getProgressColor(progress) {
+            const colors = [
+                '#e6f5e6',  // Lightest green for progress 2
+                '#cceccc',
+                '#b3e3b3',
+                '#99da99',
+                '#80d080',
+                '#66c766',
+                '#4dbf4d',
+                '#33b533',
+                '#1aaa1a',  // Darkest green for progress 10
+            ];
+            return progress > 1 ? colors[progress - 2] : 'transparent';
+        }
+
+        // Function to determine text color based on background brightness
+        function getTextColorForBackground(bgColor) {
+            if (bgColor === 'transparent') return 'black';
+            const r = parseInt(bgColor.slice(1, 3), 16);
+            const g = parseInt(bgColor.slice(3, 5), 16);
+            const b = parseInt(bgColor.slice(5, 7), 16);
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            return brightness > 128 ? 'black' : 'white';
+        }
+
+        // Set initial timers for all tasks based on their duration
+        function setInitialTimers() {
+            const timers = document.querySelectorAll('.timer');
+            timers.forEach(timer => {
+                const duration = parseInt(timer.dataset.duration, 10);
+                if (duration && !isNaN(duration)) {
+                    timer.innerText = formatTime(duration, 0);  // Set initial value as "MM:00"
+                }
+            });
+        }
+
+        // Call the function to apply colors and set initial timers when the document loads
+        window.onload = function () {
+            applyProgressColors();
+            setInitialTimers();
+        };
+    </script>
+</head>
+<body>
+    <div class="schedule-container">
+        <h1>Generated Schedule</h1>
+        <table>
+            <tr>
+                <th>Task</th>
+                <th>Start/Pause</th>
+                <th>Priority Score</th>
+                <th>Notes</th>
+                <th>Progress Bar</th> <!-- Updated to use a signal-style bar -->
+                <th>Actions</th>
+            </tr>
+            {% for task in schedule %}
+            <tr data-progress="{{ '0' if task['Task'] in ['Short Break', 'Lunch Break', 'Free Time'] else task['Progress'] }}" id="{{ task['Task'] }}" class="{{ 'completed-task' if task['Completed'] else '' }}">
+                <td>{{ task['Task'] }}</td>
+                <!-- Start/Pause Button and Timer -->
+                <td>
+                    <button id="start-btn-{{ task['Task'] }}" class="start" onclick="startTimer('{{ task['Task'] }}', {{ task['Estimated Duration'] }})">Start</button>
+                    <button id="pause-btn-{{ task['Task'] }}" class="pause" onclick="pauseTimer('{{ task['Task'] }}')" style="display:none;">Pause</button>
+                    <div id="timer-{{ task['Task'] }}" class="timer" data-duration="{{ task['Estimated Duration'] }}">{{ task['Estimated Duration'] }}:00</div>
+                </td>
+                <!-- Display "10" for breaks instead of "N/A" -->
+                <td>
+                    {% if task['Task'] == "Short Break" or task['Task'] == "Lunch Break" or task['Task'] == "Free Time" %}
+                        10
+                    {% else %}
+                        {{ task['Priority Score'] }}
+                    {% endif %}
+                </td>
+                <td>{{ task['Notes'] }}</td>
+                <!-- Signal Style Progress Bar -->
+                <td>
+                    <div class="signal-bar-container" id="signal-bar-{{ task['Task'] }}">
+                        {% for i in range(10) %}
+                        <div class="signal-bar level-{{ i+1 }} {{ 'low-progress' if i < task['Progress'] and i < 3 else ('medium-progress' if i < task['Progress'] and i < 7 else 'high-progress') }}"></div>
+                        {% endfor %}
+                    </div>
+                </td>
+                <td>
+                    <!-- Complete and Remove Buttons -->
+                    <form action="{{ url_for('schedule') }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="task_name" value="{{ task['Task'] }}">
+                        <button type="submit" name="action" value="complete" class="complete">Complete</button>
+                    </form>
+                    <form id="remove-form-{{ task['Task'] }}" action="{{ url_for('schedule') }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="task_name" value="{{ task['Task'] }}">
+                        <button type="button" class="remove" onclick="confirmRemoval('{{ task['Task'] }}')">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        <br>
+        <form action="{{ url_for('clear_completed') }}" method="POST">
+            <button type="submit">Clear Completed Tasks</button>
+        </form>
+        <br>
+        <a href="{{ url_for('index') }}">Back to Task Input</a>
+    </div>
+    <!-- Modal for Timer Completion Prompts -->
+    <div id="modal">
+        <h3>Task Time's Up!</h3>
+        <p>Would you like more time, or move to the next task?</p>
+        <button onclick="handleModalResponse('more-time')">Add More Time</button>
+        <button onclick="handleModalResponse('next-task')">Move to Next Task</button>
+    </div>
+    <!-- Modal for Congrats Prompt -->
+    <div id="congrats-modal">
+        <h3>Congrats on completing this task!</h3>
+        <p>Would you like to delete this task or keep it on the schedule?</p>
+        <button onclick="handleCongratsResponse('delete')">Delete</button>
+        <button onclick="handleCongratsResponse('keep')">Keep on Schedule</button>
+    </div>
+    <!-- Overlay for Modals -->
+    <div id="overlay"></div>
+</body>
+</html>

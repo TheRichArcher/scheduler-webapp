@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Task Input Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center; /* Center content horizontally */
+            align-items: center; /* Center content vertically */
+            height: 100vh; /* Full viewport height */
+            margin: 0;
+            background-color: #f8f9fa; /* Light background color for better contrast */
+        }
+        .form-container {
+            text-align: left; /* Align text to the left */
+            width: 600px; /* Fixed width for two-column layout */
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 10px; /* Reduced padding */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            background-color: #ffffff;
+        }
+        h1 {
+            text-align: center;
+            font-size: 20px; /* Reduced font size */
+        }
+        form {
+            display: grid; /* Use grid layout */
+            grid-template-columns: 1fr 1fr; /* Two columns */
+            column-gap: 20px; /* Space between columns */
+            row-gap: 10px; /* Space between rows */
+        }
+        form label {
+            font-size: 14px; /* Smaller label font size */
+        }
+        form input[type="text"],
+        form input[type="number"],
+        form textarea {
+            width: 95%; /* Adjust width to fit within grid */
+            padding: 5px;
+            font-size: 14px; /* Reduced input font size */
+        }
+        form input[type="checkbox"] {
+            width: auto; /* Keep checkbox small */
+            margin-top: 0; /* Align with label */
+        }
+        textarea {
+            resize: none; /* Prevent resizing */
+            height: 50px; /* Smaller height for the textarea */
+        }
+        .checkbox-group {
+            grid-column: span 2; /* Checkbox spans both columns */
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        form input[type="submit"] {
+            grid-column: span 2; /* Submit button spans both columns */
+            padding: 10px;
+            margin-top: 10px; /* Spacing above submit button */
+            background-color: #007bff; /* Bootstrap-like blue */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        form input[type="submit"]:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+        .link-container {
+            text-align: center;
+            margin-top: 10px;
+        }
+        a {
+            display: inline-block;
+            margin-top: 5px; /* Reduced margin */
+            text-decoration: none;
+            color: #007bff;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Enter Task Details</h1>
+        <form method="POST">
+            <!-- Task Name -->
+            <label>Task Name:</label>
+            <input type="text" name="task_name" required>
+
+            <!-- Urgency and Importance (Side by Side) -->
+            <label>Urgency (1-5):</label>
+            <input type="number" name="urgency" min="1" max="5" required>
+
+            <label>Importance (1-5):</label>
+            <input type="number" name="importance" min="1" max="5" required>
+
+            <!-- Difficulty and Estimated Duration (Side by Side) -->
+            <label>Difficulty (1-5):</label>
+            <input type="number" name="difficulty" min="1" max="5" required>
+
+            <label>Estimated Duration (minutes):</label>
+            <input type="number" name="estimated_duration" min="1" required>
+
+            <!-- Days on To-Do List and Progress (Side by Side) -->
+            <label>Days on To-Do List:</label>
+            <input type="number" name="days_on_list" min="1" required>
+
+            <label>Progress (1-10):</label>
+            <input type="number" name="progress" min="1" max="10" required>
+
+            <!-- Task Notes (Full Width) -->
+            <label>Task Notes:</label>
+            <textarea name="notes" placeholder="Enter additional details or comments about the task..."></textarea>
+
+            <!-- Checkbox Group for Recurring Option -->
+            <div class="checkbox-group">
+                <label>Schedule Daily Until Complete</label>
+                <input type="checkbox" name="recurring">
+            </div>
+
+            <!-- Submit Button (Full Width) -->
+            <input type="submit" value="Add Task">
+        </form>
+
+        <!-- Link Container for Viewing Schedule -->
+        <div class="link-container">
+            <a href="{{ url_for('schedule') }}">View Schedule</a>
+        </div>
+    </div>
+</body>
+</html>
